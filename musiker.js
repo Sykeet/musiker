@@ -1,52 +1,80 @@
-import fs from 'fs'
-import Band from './band.js'
+import fs from 'fs';
+import Band from './band.js';
 
 export default class Musiker {
-  musikerLista = []
+  musikerLista = [];
+
   constructor() {
-    this.fetchData()
+    this.fetchData();
     this.band = new Band();
   }
 
   fetchData() {
-    const jsonString = fs.readFileSync("musiker.json");
-    const data = JSON.parse(jsonString);
+    try {
+      const jsonString = fs.readFileSync("musiker.json", "utf-8");
+      const data = JSON.parse(jsonString);
 
-    for (let i = 0; i < data.length; i++) {
-      this.musikerLista.push(data[i]);
+      if (!Array.isArray(data)) {
+        console.error("Data i musiker.json är inte i förväntat format.");
+        return;
+      }
+
+      for (let i = 0; i < data.length; i++) {
+        this.musikerLista.push(data[i]);
+      }
+    } catch (error) {
+      console.error("Ett fel inträffade när du försökte läsa från musiker.json:", error.message);
     }
   }
 
   skapaMusiker(name, age, info) {
+    if (typeof name !== "string" || typeof age !== "number" || typeof info !== "string") {
+      console.error("Ogiltiga parametrar.");
+      return;
+    }
+
     const newMusiker = new NewMusiker(name, age, info);
-    this.musikerLista.push(newMusiker.dataInfo())
+    this.musikerLista.push(newMusiker.dataInfo());
     this.skrivTillJson();
   }
 
   skrivTillJson() {
-    fs.writeFileSync('./musiker.json', JSON.stringify(this.musikerLista, null, 2), (err) => {
-      if (err) throw err;
-      console.log('Artist data writen to file')
-    })
+    try {
+      fs.writeFileSync('./musiker.json', JSON.stringify(this.musikerLista, null, 2));
+      console.log('Artist data written to file');
+    } catch (err) {
+      console.error('Ett fel inträffade när data skulle skrivas till musiker.json:', err.message);
+    }
   }
 
   skrivTillTidigareMedlemmarJson(data) {
-    fs.writeFileSync('./tidigareMedlemmar.json', JSON.stringify(data, null, 2), (err) => {
-      if (err) throw err;
+    try {
+      fs.writeFileSync('./tidigareMedlemmar.json', JSON.stringify(data, null, 2));
       console.log('Tidigare medlem data skriven till fil');
-    });
+    } catch (err) {
+      console.error('Ett fel inträffade när data skulle skrivas till tidigareMedlemmar.json:', err.message);
+    }
   }
 
-
   visaAllaMusiker() {
+    if (!this.musikerLista || this.musikerLista.length === 0) {
+      console.log("Inga musiker hittades.");
+      return;
+    }
+
     for (let i = 0; i < this.musikerLista.length; i++) {
-      console.log(`${i}. ${this.musikerLista[i].name}`)
+      console.log(`${i}. ${this.musikerLista[i].name}`);
     }
   }
 
   visaEnMusiker(val) {
-    console.log(this.musikerLista[val])
+    if (this.musikerLista[val]) {
+      console.log(this.musikerLista[val]);
+    } else {
+      console.error("Ingen musiker hittades med det angivna värdet.");
+    }
   }
+
   skapaEttBand(val, instrument, bandNamn, bandAge) {
     const tempID = this.band.skapaEttBand(bandNamn, bandAge, this.musikerLista[val].musikerID, this.musikerLista[val].name, instrument);
     this.editMusikerLista(val, instrument, tempID, bandNamn, bandAge);
@@ -131,16 +159,23 @@ export default class Musiker {
   taBortMusiker(musikerID) {
     const musikerIndex = this.musikerLista.findIndex(musiker => musiker.musikerID === musikerID);
     if (musikerIndex === -1) {
+      console.error("Musiker inte hittad.");
       return false;
     }
 
     const borttagenMusiker = this.musikerLista[musikerIndex];
     let tidigareMedlemmar = [];
-    if (fs.existsSync('./tidigareMedlemmar.json')) {
-      tidigareMedlemmar = JSON.parse(fs.readFileSync('./tidigareMedlemmar.json'));
+
+    try {
+      if (fs.existsSync('./tidigareMedlemmar.json')) {
+        tidigareMedlemmar = JSON.parse(fs.readFileSync('./tidigareMedlemmar.json', 'utf-8'));
+      }
+      tidigareMedlemmar.push(borttagenMusiker);
+      this.skrivTillTidigareMedlemmarJson(tidigareMedlemmar);
+    } catch (err) {
+      console.error('Ett fel inträffade när tidigareMedlemmar.json skulle hanteras:', err.message);
+      return false;
     }
-    tidigareMedlemmar.push(borttagenMusiker);
-    this.skrivTillTidigareMedlemmarJson(tidigareMedlemmar);
 
     const bandIDsToRemoveFrom = this.musikerLista[musikerIndex].currentBand.map(b => b.bandID);
     for (const bandID of bandIDsToRemoveFrom) {
@@ -157,10 +192,16 @@ export default class Musiker {
 
 class NewMusiker {
   constructor(name, age, info) {
-    this.name = name
-    this.age = age
-    this.info = info
+    if (typeof name !== "string" || typeof age !== "number" || typeof info !== "string") {
+      console.error("Ogiltiga parametrar.");
+      return;
+    }
+
+    this.name = name;
+    this.age = age;
+    this.info = info;
   }
+
   dataInfo() {
     return {
       musikerID: 'id' + new Date().getTime(),

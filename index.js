@@ -5,6 +5,7 @@ import Band from "./band.js";
 
 const musiker = new Musiker();
 const band = new Band();
+
 console.log
   (`Meny:
   1. Lägg till musiker
@@ -174,5 +175,5 @@ switch (alternativ) {
     break;
   default:
     console.log("Valet finns ej");
-}
+} 
 
